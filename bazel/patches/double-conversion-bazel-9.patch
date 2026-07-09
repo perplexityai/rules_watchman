@@ -1,0 +1,12 @@
+diff --git a/BUILD b/BUILD
+index db51a7f..6f2e457 100644
+--- a/BUILD
++++ b/BUILD
+@@ -1,5 +1,7 @@
+ # Bazel(http://bazel.io) BUILD file
+ 
++load("@@rules_cc+//cc:defs.bzl", "cc_library", "cc_test")
++
+ licenses(["notice"])
+ 
+ exports_files(["LICENSE"])

@@ -1,0 +1,63 @@
+name: bazel
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.config }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - config: linux-x64
+            execution_platform: //bazel/platforms:linux_x64
+            runner: ubuntu-24.04
+            shell_executable: /bin/bash
+          - config: linux-arm64
+            execution_platform: //bazel/platforms:linux_arm64
+            runner: ubuntu-24.04-arm
+            shell_executable: /bin/bash
+          - config: darwin-arm64
+            execution_platform: "@llvm//platforms:macos_arm64"
+            runner: macos-15
+            shell_executable: /opt/homebrew/bin/bash
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Free disk space
+        if: runner.os == 'Linux'
+        run: sudo rm -rf /usr/local/lib/android
+
+      - name: Install modern Bash
+        if: runner.os == 'macOS'
+        run: brew install bash
+
+      - uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          cache-save: ${{ github.event_name != 'pull_request' }}
+          disk-cache: ${{ github.workflow }}-${{ matrix.config }}
+          repository-cache: true
+
+      - name: Build and smoke test
+        run: >-
+          bazel test
+          --shell_executable=${{ matrix.shell_executable }}
+          --config=${{ matrix.config }}
+          --extra_execution_platforms=${{ matrix.execution_platform }}
+          --build_tests_only
+          --test_output=errors
+          //...
