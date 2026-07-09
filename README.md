@@ -39,3 +39,14 @@ tests/watchman_smoke_test.sh /path/to/watchman
 ```powershell
 tests/watchman_smoke_test.ps1 -Watchman C:\path\to\watchman.exe
 ```
+
+## Development
+
+Install the development hooks once after cloning:
+
+```sh
+npm ci
+```
+
+Commit messages and pull request titles use Conventional Commits, for example
+`feat: add a target` or `fix: correct state directory resolution`.

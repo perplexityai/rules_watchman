@@ -1,0 +1,14 @@
+{
+  "name": "rules-watchman-dev",
+  "private": true,
+  "scripts": {
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.0.2",
+    "lefthook": "2.1.9"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

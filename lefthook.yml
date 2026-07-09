@@ -1,0 +1,14 @@
+# Docs: https://github.com/evilmartians/lefthook
+
+output:
+  - execution
+  - execution_info
+  - execution_out
+  - failure
+  - skips
+  - success
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no-install commitlint --edit {1}
