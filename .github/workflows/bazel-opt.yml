@@ -1,10 +1,15 @@
 name: bazel-opt
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types:
+      - published
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build and update
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -16,6 +21,9 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.sha }}
 
       - uses: bazel-contrib/setup-bazel@0.19.0
         with:
@@ -47,7 +55,7 @@ jobs:
             [[ "${#outputs[@]}" -eq 1 ]]
             install -Dm755 \
               "$execroot/${outputs[0]}" \
-              "artifacts/$triple/watchman"
+              "artifacts/watchman-$triple"
           }
 
           stage x86_64-linux-gnu //:watchman-x86_64-linux-gnu
@@ -57,17 +65,53 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: watchman-x86_64-linux-gnu-opt
-          path: artifacts/x86_64-linux-gnu/watchman
+          path: artifacts/watchman-x86_64-linux-gnu
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v7
         with:
           name: watchman-aarch64-linux-gnu-opt
-          path: artifacts/aarch64-linux-gnu/watchman
+          path: artifacts/watchman-aarch64-linux-gnu
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v7
         with:
           name: watchman-aarch64-apple-darwin-opt
-          path: artifacts/aarch64-apple-darwin/watchman
+          path: artifacts/watchman-aarch64-apple-darwin
           if-no-files-found: error
+
+  publish:
+    name: Publish release binaries
+    needs: build
+    if: ${{ github.event_name == 'release' || inputs.tag != '' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: watchman-*-opt
+          path: artifacts
+          merge-multiple: true
+
+      - name: Upload release binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          assets=(
+            artifacts/watchman-x86_64-linux-gnu
+            artifacts/watchman-aarch64-linux-gnu
+            artifacts/watchman-aarch64-apple-darwin
+          )
+          for asset in "${assets[@]}"; do
+            [[ -f "$asset" ]]
+          done
+
+          gh release upload \
+            "$RELEASE_TAG" \
+            "${assets[@]}" \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"
