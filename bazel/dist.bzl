@@ -1,9 +1,8 @@
-"""Rules for optimized Watchman binaries by target triple."""
+"""Rules for Watchman binaries by target triple."""
 
 load("@with_cfg.bzl", "with_cfg")
 
 _dist_builder = with_cfg(native.filegroup)
-_dist_builder.set("compilation_mode", "opt")
 _dist_builder.set("strip", "always")
 
 _linux_x86_64_builder = _dist_builder.clone()

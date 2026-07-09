@@ -1,0 +1,73 @@
+name: bazel-opt
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build optimized binaries
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: bazel-contrib/setup-bazel@0.19.0
+        with:
+          bazelisk-cache: true
+          cache-save: true
+          disk-cache: ${{ github.workflow }}-linux-x64
+          repository-cache: true
+
+      - name: Build optimized distributions
+        run: |
+          set -euo pipefail
+
+          targets=(
+            //:watchman-x86_64-linux-gnu
+            //:watchman-aarch64-linux-gnu
+            //:watchman-aarch64-apple-darwin
+          )
+          bazel build --compilation_mode=opt "${targets[@]}"
+
+          execroot="$(bazel info execution_root)"
+          stage() {
+            local triple="$1"
+            local target="$2"
+            local outputs=()
+
+            mapfile -t outputs < <(
+              bazel cquery --compilation_mode=opt --output=files "$target"
+            )
+            [[ "${#outputs[@]}" -eq 1 ]]
+            install -Dm755 \
+              "$execroot/${outputs[0]}" \
+              "artifacts/$triple/watchman"
+          }
+
+          stage x86_64-linux-gnu //:watchman-x86_64-linux-gnu
+          stage aarch64-linux-gnu //:watchman-aarch64-linux-gnu
+          stage aarch64-apple-darwin //:watchman-aarch64-apple-darwin
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: watchman-x86_64-linux-gnu-opt
+          path: artifacts/x86_64-linux-gnu/watchman
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: watchman-aarch64-linux-gnu-opt
+          path: artifacts/aarch64-linux-gnu/watchman
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: watchman-aarch64-apple-darwin-opt
+          path: artifacts/aarch64-apple-darwin/watchman
+          if-no-files-found: error
