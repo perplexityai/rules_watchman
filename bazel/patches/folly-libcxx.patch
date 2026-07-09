@@ -1,0 +1,16 @@
+diff --git a/folly/BUILD.bazel b/folly/BUILD.bazel
+index d39b8ea..dd962b1 100644
+--- a/folly/BUILD.bazel
++++ b/folly/BUILD.bazel
+@@ -328,11 +328,6 @@ cmake_configure_file(
+             "FOLLY_USE_SYMBOLIZER",
+         ],
+     }) + select({
+-        "@platforms//cpu:x86_64": [
+-            "FOLLY_HAVE_EXTRANDOM_SFMT19937",
+-        ],
+-        "//conditions:default": [],
+-    }) + select({
+         ":with_int128_setting": ["FOLLY_HAVE_INT128_T"],
+         "//conditions:default": [],
+     }),

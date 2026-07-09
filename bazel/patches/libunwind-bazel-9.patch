@@ -1,0 +1,12 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 1a7b50c..c08bbd0 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -1,6 +1,6 @@
+ load("@bazel_skylib//lib:selects.bzl", "selects")
+ load("@bazel_skylib//rules:expand_template.bzl", "expand_template")
+-load("@rules_cc//cc:defs.bzl", "cc_library")
++load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+ 
+ # Targets in this file are based off configure.ac, Makefile.am, and
+ # src/Makefile.am with the default configurations.

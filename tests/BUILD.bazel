@@ -1,0 +1,10 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+sh_test(
+    name = "watchman_smoke_test",
+    size = "small",
+    srcs = ["watchman_smoke_test.sh"],
+    args = ["$(rootpath @watchman//:watchman)"],
+    data = ["@watchman"],
+    tags = ["no-sandbox"],
+)

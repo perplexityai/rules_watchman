@@ -1,0 +1,9 @@
+exports_files([
+    "double-conversion-bazel-9.patch",
+    "folly-libcxx.patch",
+    "folly-no-libunwind-on-linux-arm64.patch",
+    "libdwarf-bazel-9.patch",
+    "libunwind-bazel-9.patch",
+    "range-v3-bazel-9.patch",
+    "watchman-bazel.patch",
+])
