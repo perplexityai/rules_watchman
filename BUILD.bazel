@@ -1,18 +1,32 @@
-load("//bazel:dist.bzl", "opt_filegroup")
+load(
+    "//bazel:dist.bzl",
+    "linux_aarch64_dist",
+    "linux_x86_64_dist",
+    "macos_aarch64_dist",
+)
 
 package(default_visibility = ["//visibility:public"])
 
-alias(
-    name = "watchman",
-    actual = "@watchman//:watchman",
+linux_x86_64_dist(
+    name = "watchman-x86_64-linux-gnu",
+    srcs = ["@watchman"],
 )
 
-opt_filegroup(
-    name = "watchman_dist",
-    srcs = [":watchman"],
+linux_aarch64_dist(
+    name = "watchman-aarch64-linux-gnu",
+    srcs = ["@watchman"],
 )
 
-alias(
+macos_aarch64_dist(
+    name = "watchman-aarch64-apple-darwin",
+    srcs = ["@watchman"],
+)
+
+filegroup(
     name = "dist",
-    actual = ":watchman_dist",
+    srcs = [
+        ":watchman-aarch64-apple-darwin",
+        ":watchman-aarch64-linux-gnu",
+        ":watchman-x86_64-linux-gnu",
+    ],
 )

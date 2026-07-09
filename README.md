@@ -5,29 +5,29 @@ Hermetic Bazel build for Watchman `v2026.07.06.00` using
 
 Supported targets:
 
-- Linux x64
-- Linux arm64
-- Darwin arm64
+- Linux x64 (`x86_64-linux-gnu`)
+- Linux arm64 (`aarch64-linux-gnu`)
+- Darwin arm64 (`aarch64-apple-darwin`)
 
 Linux binaries statically link libc++ and third-party dependencies; glibc remains
 dynamic. Darwin uses the Apple system runtime and frameworks.
 
-Build a binary:
+Build any supported target from a registered host:
 
 ```sh
-bazel build --config=linux-x64 //:watchman
-bazel build --config=linux-arm64 //:watchman
-bazel build --config=darwin-arm64 //:watchman
+bazel build //:watchman-x86_64-linux-gnu
+bazel build //:watchman-aarch64-linux-gnu
+bazel build //:watchman-aarch64-apple-darwin
 ```
 
-Run the filesystem smoke test on the matching host:
+Build every distribution binary from one host:
 
 ```sh
-bazel test --config=darwin-arm64 --build_tests_only //...
+bazel build //:dist
 ```
 
-Build an optimized distribution binary:
+Run the filesystem smoke test with a binary on its matching host:
 
 ```sh
-bazel build --config=linux-x64 --config=dist //:dist
+tests/watchman_smoke_test.sh /path/to/watchman
 ```

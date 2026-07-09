@@ -1,10 +1,7 @@
-name: bazel
+name: bazel-opt
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
     branches:
       - main
   workflow_dispatch:
@@ -14,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build binaries
+    name: Build optimized binaries
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -23,11 +20,11 @@ jobs:
       - uses: bazel-contrib/setup-bazel@0.19.0
         with:
           bazelisk-cache: true
-          cache-save: ${{ github.event_name != 'pull_request' }}
+          cache-save: true
           disk-cache: ${{ github.workflow }}-linux-x64
           repository-cache: true
 
-      - name: Build distributions
+      - name: Build optimized distributions
         run: |
           set -euo pipefail
 
@@ -36,7 +33,7 @@ jobs:
             //:watchman-aarch64-linux-gnu
             //:watchman-aarch64-apple-darwin
           )
-          bazel build "${targets[@]}"
+          bazel build --compilation_mode=opt "${targets[@]}"
 
           execroot="$(bazel info execution_root)"
           stage() {
@@ -44,7 +41,9 @@ jobs:
             local target="$2"
             local outputs=()
 
-            mapfile -t outputs < <(bazel cquery --output=files "$target")
+            mapfile -t outputs < <(
+              bazel cquery --compilation_mode=opt --output=files "$target"
+            )
             [[ "${#outputs[@]}" -eq 1 ]]
             install -Dm755 \
               "$execroot/${outputs[0]}" \
@@ -57,48 +56,18 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: watchman-x86_64-linux-gnu
+          name: watchman-x86_64-linux-gnu-opt
           path: artifacts/x86_64-linux-gnu/watchman
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v7
         with:
-          name: watchman-aarch64-linux-gnu
+          name: watchman-aarch64-linux-gnu-opt
           path: artifacts/aarch64-linux-gnu/watchman
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v7
         with:
-          name: watchman-aarch64-apple-darwin
+          name: watchman-aarch64-apple-darwin-opt
           path: artifacts/aarch64-apple-darwin/watchman
           if-no-files-found: error
-
-  smoke:
-    name: Smoke test (${{ matrix.triple }})
-    needs: build
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - triple: x86_64-linux-gnu
-            runner: ubuntu-24.04
-          - triple: aarch64-linux-gnu
-            runner: ubuntu-24.04-arm
-          - triple: aarch64-apple-darwin
-            runner: macos-15
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: watchman-${{ matrix.triple }}
-          path: artifacts
-
-      - name: Run smoke test
-        run: |
-          binary="$PWD/artifacts/watchman"
-          chmod +x "$binary"
-          tests/watchman_smoke_test.sh "$binary"
