@@ -20,9 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Free disk space
-        run: sudo rm -rf /usr/local/lib/android
-
       - uses: bazel-contrib/setup-bazel@0.19.0
         with:
           bazelisk-cache: true
