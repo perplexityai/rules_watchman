@@ -35,6 +35,7 @@ jobs:
             //:watchman-x86_64-linux-gnu
             //:watchman-aarch64-linux-gnu
             //:watchman-aarch64-apple-darwin
+            //:watchman-x86_64-windows-gnu
           )
           bazel build "${targets[@]}"
 
@@ -42,18 +43,20 @@ jobs:
           stage() {
             local triple="$1"
             local target="$2"
+            local binary_name="$3"
             local outputs=()
 
             mapfile -t outputs < <(bazel cquery --output=files "$target")
             [[ "${#outputs[@]}" -eq 1 ]]
             install -Dm755 \
               "$execroot/${outputs[0]}" \
-              "artifacts/$triple/watchman"
+              "artifacts/$triple/$binary_name"
           }
 
-          stage x86_64-linux-gnu //:watchman-x86_64-linux-gnu
-          stage aarch64-linux-gnu //:watchman-aarch64-linux-gnu
-          stage aarch64-apple-darwin //:watchman-aarch64-apple-darwin
+          stage x86_64-linux-gnu //:watchman-x86_64-linux-gnu watchman
+          stage aarch64-linux-gnu //:watchman-aarch64-linux-gnu watchman
+          stage aarch64-apple-darwin //:watchman-aarch64-apple-darwin watchman
+          stage x86_64-windows-gnu //:watchman-x86_64-windows-gnu watchman.exe
 
       - uses: actions/upload-artifact@v7
         with:
@@ -73,6 +76,12 @@ jobs:
           path: artifacts/aarch64-apple-darwin/watchman
           if-no-files-found: error
 
+      - uses: actions/upload-artifact@v7
+        with:
+          name: watchman-x86_64-windows-gnu
+          path: artifacts/x86_64-windows-gnu/watchman.exe
+          if-no-files-found: error
+
   smoke:
     name: Smoke test (${{ matrix.triple }})
     needs: build
@@ -88,6 +97,8 @@ jobs:
             runner: ubuntu-24.04-arm
           - triple: aarch64-apple-darwin
             runner: macos-15
+          - triple: x86_64-windows-gnu
+            runner: windows-2022
 
     steps:
       - uses: actions/checkout@v6
@@ -98,7 +109,15 @@ jobs:
           path: artifacts
 
       - name: Run smoke test
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
           binary="$PWD/artifacts/watchman"
           chmod +x "$binary"
           tests/watchman_smoke_test.sh "$binary"
+
+      - name: Run Windows smoke test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & ./tests/watchman_smoke_test.ps1 -Watchman "$PWD/artifacts/watchman.exe"

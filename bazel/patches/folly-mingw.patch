@@ -1,0 +1,313 @@
+diff --git a/CMake/folly-config.h.cmake b/CMake/folly-config.h.cmake
+--- a/CMake/folly-config.h.cmake
++++ b/CMake/folly-config.h.cmake
+@@ -85,3 +85,16 @@
+ #cmakedefine01 FOLLY_HAVE_LIBRT
+
+ #cmakedefine01 FOLLY_HAVE_VSOCK
++
++#if defined(__MINGW32__)
++#undef FOLLY_HAVE_PTHREAD
++#define FOLLY_HAVE_PTHREAD 0
++#undef FOLLY_HAVE_PTHREAD_ATFORK
++
++#undef FOLLY_HAVE_PREADV
++#undef FOLLY_HAVE_PWRITEV
++#undef FOLLY_HAVE_DWARF
++#define FOLLY_HAVE_DWARF 0
++#undef FOLLY_HAVE_SWAPCONTEXT
++#undef FOLLY_HAVE_BACKTRACE
++#endif
+diff --git a/folly/portability/SysTypes.h b/folly/portability/SysTypes.h
+--- a/folly/portability/SysTypes.h
++++ b/folly/portability/SysTypes.h
+@@ -25,7 +25,9 @@
+ // This is a massive pain to have be an `int` due to the pthread implementation
+ // we support, but it's far more compatible with the rest of the windows world
+ // as an `int` than it would be as a `void*`
++#if !defined(__MINGW32__)
+ using pid_t = int;
++#endif
+
+ using uid_t = int;
+ using gid_t = int;
+@@ -37,11 +39,13 @@
+ // with just this single typedef.
+ using ssize_t = SSIZE_T;
+
++#if !defined(__MINGW32__)
+ #ifndef HAVE_MODE_T
+ #define HAVE_MODE_T 1
+ // The Windows headers don't define this anywhere, nor do any of the libs
+ // that Folly depends on, so define it here.
+ using mode_t = unsigned int;
+ #endif
++#endif
+
+ #endif
+diff --git a/folly/Portability.h b/folly/Portability.h
+--- a/folly/Portability.h
++++ b/folly/Portability.h
+@@ -661,7 +661,8 @@
+ #if defined(__NVCC__)
+ // For now, NVCC matches other compilers but does not offer coroutines.
+ #define FOLLY_HAS_COROUTINES 0
+-#elif defined(_WIN32) && defined(__clang__) && !defined(LLVM_COROUTINES) && \
++#elif defined(_WIN32) && defined(__clang__) && !defined(__MINGW32__) && \
++    !defined(LLVM_COROUTINES) && \
+     !defined(LLVM_COROUTINES_CPP20)
+ // LLVM and MSVC coroutines are ABI incompatible, so for the MSVC implementation
+ // of <experimental/coroutine> on Windows we *don't* have coroutines.
+diff --git a/folly/portability/BUILD.bazel b/folly/portability/BUILD.bazel
+--- a/folly/portability/BUILD.bazel
++++ b/folly/portability/BUILD.bazel
+@@ -301,5 +301,6 @@ cpp_library(
+     }),
+     deps = [
++        ":sys_types",
+         ":windows",
+         "//folly:portability",
+     ],
+diff --git a/folly/net/detail/SocketFileDescriptorMap.cpp b/folly/net/detail/SocketFileDescriptorMap.cpp
+--- a/folly/net/detail/SocketFileDescriptorMap.cpp
++++ b/folly/net/detail/SocketFileDescriptorMap.cpp
+@@ -65,6 +65,9 @@ static int closeOnlyFileDescriptor(int fd) {
+     return -1;
+   }
+   int c = 0;
++#if defined(__MINGW32__)
++  c = ::_close(fd);
++#else
+   __try {
+     // We expect this to fail. It still closes the file descriptor though.
+     c = ::_close(fd);
+@@ -79,6 +82,7 @@ static int closeOnlyFileDescriptor(int fd) {
+     // We told it to continue execution, so nothing here would
+     // be run anyways.
+   }
++#endif
+   // We're at the core, we don't get the luxery of SCOPE_EXIT because
+   // of circular dependencies.
+   if (!SetHandleInformation(h, protectFlag, handleFlags)) {
+diff --git a/folly/system/ThreadName.cpp b/folly/system/ThreadName.cpp
+--- a/folly/system/ThreadName.cpp
++++ b/folly/system/ThreadName.cpp
+@@ -236,6 +236,10 @@ bool setThreadNameWindowsViaDebugger(DWORD id, StringPiece name) noexcept {
+
+   TNIUnion tniUnion = {0x1000, trimmed, id, 0};
+
++#if defined(__MINGW32__)
++  (void)tniUnion;
++  return false;
++#else
+   // SEH requires no use of C++ object destruction semantics in this stack
+   // frame.
+   __try {
+@@ -248,6 +252,7 @@ bool setThreadNameWindowsViaDebugger(DWORD id, StringPiece name) noexcept {
+     // Swallow the exception when a debugger isn't attached.
+   }
+   return true;
++#endif
+ }
+
+ bool setThreadNameWindows(std::thread::id tid, StringPiece name) {
+diff --git a/folly/portability/provide/BUILD.bazel b/folly/portability/provide/BUILD.bazel
+--- a/folly/portability/provide/BUILD.bazel
++++ b/folly/portability/provide/BUILD.bazel
+@@ -7,9 +7,12 @@ package(default_visibility = ["//visibility:public"])
+
+ cpp_library(
+     name = "libdwarf",
+-    deps = [
+-        "@libdwarf",
+-    ],
++    deps = select({
++        "@platforms//os:windows": [],
++        "//conditions:default": [
++            "@libdwarf",
++        ],
++    }),
+ )
+
+ cpp_library(
+diff --git a/folly/portability/Time.cpp b/folly/portability/Time.cpp
+--- a/folly/portability/Time.cpp
++++ b/folly/portability/Time.cpp
+@@ -278,6 +278,6 @@ extern "C" {
+ char* asctime_r(const tm* tm, char* buf) {
+   char tmpBuf[64];
+-  if (asctime_s(tmpBuf, tm)) {
++  if (asctime_s(tmpBuf, sizeof(tmpBuf), tm)) {
+     return nullptr;
+   }
+   // Nothing we can do if the buff is to small :(
+@@ -308,6 +308,7 @@ tm* localtime_r(const time_t* t, tm* o) {
+   return nullptr;
+ }
+
++#if !defined(__MINGW32__)
+ int nanosleep(const struct timespec* request, struct timespec* remain) {
+   Sleep((DWORD)((request->tv_sec * 1000) + (request->tv_nsec / 1000000)));
+   if (remain != nullptr) {
+@@ -316,6 +317,7 @@ int nanosleep(const struct timespec* request, struct timespec* remain) {
+   }
+   return 0;
+ }
++#endif
+
+ char* strptime(
+     const char* __restrict s,
+diff --git a/folly/portability/Dirent.cpp b/folly/portability/Dirent.cpp
+--- a/folly/portability/Dirent.cpp
++++ b/folly/portability/Dirent.cpp
+@@ -16,6 +16,7 @@
+ #include <folly/portability/Dirent.h>
+
+ #ifdef _WIN32
++#include <cerrno>
+ #include <stdlib.h>
+ #include <string>
+
+diff --git a/folly/portability/Fcntl.cpp b/folly/portability/Fcntl.cpp
+--- a/folly/portability/Fcntl.cpp
++++ b/folly/portability/Fcntl.cpp
+@@ -17,6 +17,7 @@
+ #include <folly/portability/Fcntl.h>
+
+ #ifdef _WIN32
++#include <share.h>
+ #include <folly/portability/Sockets.h>
+ #include <folly/portability/SysStat.h>
+ #include <folly/portability/Windows.h>
+diff --git a/folly/concurrency/CacheLocality.cpp b/folly/concurrency/CacheLocality.cpp
+--- a/folly/concurrency/CacheLocality.cpp
++++ b/folly/concurrency/CacheLocality.cpp
+@@ -16,7 +16,7 @@
+
+ #include <folly/concurrency/CacheLocality.h>
+
+-#ifndef _MSC_VER
++#ifndef _WIN32
+ #define _GNU_SOURCE 1 // for RTLD_NOLOAD
+ #include <dlfcn.h>
+ #endif
+diff --git a/folly/FileUtil.cpp b/folly/FileUtil.cpp
+--- a/folly/FileUtil.cpp
++++ b/folly/FileUtil.cpp
+@@ -94,7 +94,7 @@ int fdatasyncNoInt(int fd) {
+ #if defined(__APPLE__)
+   return wrapNoInt(fcntl, fd, F_FULLFSYNC);
+-#elif defined(__FreeBSD__) || defined(_MSC_VER)
++#elif defined(__FreeBSD__) || defined(_WIN32)
+   return wrapNoInt(fsync, fd);
+ #else
+   return wrapNoInt(fdatasync, fd);
+@@ -250,7 +250,12 @@ int writeFileAtomicNoThrowImpl(
+   auto temporaryFilePathString = fileutil_detail::getTemporaryFilePathString(
+       filePathString, options.temporaryDirectory);
+
++#ifdef _WIN32
++  auto tmpFD = portability::stdlib::mkstemp(
++      const_cast<char*>(temporaryFilePathString.data()));
++#else
+   auto tmpFD = mkstemp(const_cast<char*>(temporaryFilePathString.data()));
++#endif
+   if (tmpFD == -1) {
+     return errno;
+   }
+diff --git a/folly/detail/IPAddressSource.h b/folly/detail/IPAddressSource.h
+--- a/folly/detail/IPAddressSource.h
++++ b/folly/detail/IPAddressSource.h
+@@ -244,7 +244,7 @@ inline void fastIpv4AppendToString(const in_addr& inAddr, std::string& out) {
+ }
+
+ inline size_t fastIpv6ToBufferUnsafe(const in6_addr& in6Addr, char* str) {
+-#ifdef _MSC_VER
++#ifdef _WIN32
+   const uint16_t* bytes = reinterpret_cast<const uint16_t*>(&in6Addr.u.Word);
+ #else
+   const uint16_t* bytes = reinterpret_cast<const uint16_t*>(&in6Addr.s6_addr16);
+diff --git a/folly/init/BUILD.bazel b/folly/init/BUILD.bazel
+--- a/folly/init/BUILD.bazel
++++ b/folly/init/BUILD.bazel
+@@ -20,6 +20,7 @@ cpp_library(
+     ] + select({
+         "@platforms//os:linux": ["//folly/debugging/symbolizer:signal_handler"],
+         "@platforms//os:macos": ["//folly/debugging/symbolizer:signal_handler"],
++        "@platforms//os:windows": ["//folly/debugging/symbolizer:signal_handler"],
+         "//conditions:default": [],
+     }),
+ )
+diff --git a/folly/lang/Exception.cpp b/folly/lang/Exception.cpp
+--- a/folly/lang/Exception.cpp
++++ b/folly/lang/Exception.cpp
+@@ -283,7 +283,7 @@ namespace abi = __cxxabiv1;
+
+ #endif // defined(__FreeBSD__)
+
+-#if defined(_WIN32)
++#if defined(_WIN32) && !defined(__MINGW32__)
+
+ #if defined(__clang__)
+ struct _s_ThrowInfo; // compiler intrinsic in msvc
+@@ -545,7 +545,7 @@ std::size_t exception_ptr_use_count_(std::exception_ptr const& ptr) noexcept {
+
+ #endif // defined(__FreeBSD__)
+
+-#if defined(_WIN32)
++#if defined(_WIN32) && !defined(__MINGW32__)
+
+ template <typename T>
+ static T* win32_decode_pointer(T* ptr) {
+diff --git a/folly/portability/Unistd.cpp b/folly/portability/Unistd.cpp
+--- a/folly/portability/Unistd.cpp
++++ b/folly/portability/Unistd.cpp
+@@ -49,7 +49,7 @@ template <bool is64Bit, class Offset>
+ static Offset seek(int fd, Offset offset, int whence) {
+   Offset res;
+   if (is64Bit) {
+-    res = lseek64(fd, offset, whence);
++    res = folly::portability::unistd::lseek64(fd, offset, whence);
+   } else {
+     res = lseek(fd, offset, whence);
+   }
+diff --git a/folly/portability/Sockets.cpp b/folly/portability/Sockets.cpp
+--- a/folly/portability/Sockets.cpp
++++ b/folly/portability/Sockets.cpp
+@@ -16,7 +16,7 @@
+
+ #include <folly/portability/Sockets.h>
+
+-#ifdef _MSC_VER
++#ifdef _WIN32
+
+ #include <errno.h>
+ #include <fcntl.h>
+diff --git a/folly/portability/SysFile.cpp b/folly/portability/SysFile.cpp
+--- a/folly/portability/SysFile.cpp
++++ b/folly/portability/SysFile.cpp
+@@ -20,7 +20,10 @@
+ #include <folly/CPortability.h>
+ #include <folly/portability/Windows.h>
+
+-extern "C" int FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME
+-flock(int fd, int operation) {
++extern "C" int
++#if !defined(__MINGW32__)
++    FOLLY_ATTR_WEAK_SYMBOLS_COMPILE_TIME
++#endif
++    flock(int fd, int operation) {
+   HANDLE h = (HANDLE)_get_osfhandle(fd);
+   if (h == INVALID_HANDLE_VALUE) {
+diff --git a/folly/result/detail/rich_exception_ptr_storage.h b/folly/result/detail/rich_exception_ptr_storage.h
+--- a/folly/result/detail/rich_exception_ptr_storage.h
++++ b/folly/result/detail/rich_exception_ptr_storage.h
+@@ -55,7 +55,7 @@ class rich_exception_ptr_base_storage {
+     static_assert(sizeof(std::exception_ptr) % sizeof(uintptr_t) == 0);
+     static constexpr size_t detail_num_ptrs_in_exception_ptr =
+         sizeof(std::exception_ptr) / sizeof(uintptr_t);
+-#if defined(_WIN32)
++#if defined(_WIN32) && !defined(__MINGW32__)
+     static_assert(detail_num_ptrs_in_exception_ptr == 2);
+ #else
+     static_assert(detail_num_ptrs_in_exception_ptr == 1);

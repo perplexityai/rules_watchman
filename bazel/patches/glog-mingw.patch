@@ -1,0 +1,20 @@
+diff --git a/bazel/glog.bzl b/bazel/glog.bzl
+--- a/bazel/glog.bzl
++++ b/bazel/glog.bzl
+@@ -114,6 +114,7 @@ def glog_library(with_gflags = 1, **kwargs):
+         "-DGLOG_NO_EXPORT=",
+         "-DGLOG_USE_WINDOWS_PORT",
+         "-DHAVE__CHSIZE_S",
++        "-DHAVE_MODE_T",
+         "-DHAVE_DBGHELP",
+         "-I" + src_windows,
+     ]
+@@ -224,7 +225,7 @@ def glog_library(with_gflags = 1, **kwargs):
+             "//conditions:default": [],
+         }),
+         linkopts = select({
+-            "@bazel_tools//src/conditions:windows": ["dbghelp.lib"],
++            "@bazel_tools//src/conditions:windows": ["-ldbghelp"],
+             "//conditions:default": [],
+         }),
+         **kwargs

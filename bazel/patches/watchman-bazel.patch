@@ -10,6 +10,95 @@ diff --git a/watchman/ClientContext.h b/watchman/ClientContext.h
  #include "eden/common/utils/ProcessInfoCache.h"
 
  namespace watchman {
+diff --git a/watchman/main.cpp b/watchman/main.cpp
+--- a/watchman/main.cpp
++++ b/watchman/main.cpp
+@@ -49,7 +49,9 @@
+ #ifdef _WIN32
+-#include <Lmcons.h> // @manual
+-#include <Shlobj.h> // @manual
++#include <lmcons.h> // @manual
++#include <shlobj.h> // @manual
++#ifndef WATCHMAN_DISABLE_DEELEVATE
+ #include "watchman/thirdparty/deelevate_binding/include/deelevate.h" // @manual
++#endif
+ #endif
+
+ using namespace watchman;
+@@ -930,4 +932,5 @@ static int inner_main(int argc, char** argv) {
+ #ifdef _WIN32
++#ifndef WATCHMAN_DISABLE_DEELEVATE
+   // On Windows its not possible to connect to elevated Watchman daemon from
+   // non-elevated processes. To ensure that Watchman daemon will always be
+   // accessible, deelevate by default if needed.
+@@ -936,6 +939,7 @@ static int inner_main(int argc, char** argv) {
+   if (Configuration().getBool("should_deelevate_on_startup", false)) {
+     deelevate_requires_normal_privileges();
+   }
++#endif
+ #endif
+
+   if (flags.foreground) {
+diff --git a/watchman/ContentHash.cpp b/watchman/ContentHash.cpp
+--- a/watchman/ContentHash.cpp
++++ b/watchman/ContentHash.cpp
+@@ -19,7 +19,7 @@
+ #define COMMON_DIGEST_FOR_OPENSSL
+ #include "CommonCrypto/CommonDigest.h" // @manual
+ #elif defined(_WIN32)
+-#include <Wincrypt.h> // @manual
++#include <wincrypt.h> // @manual
+ #else
+ #include <openssl/sha.h>
+ #endif
+diff --git a/watchman/UserDir.cpp b/watchman/UserDir.cpp
+--- a/watchman/UserDir.cpp
++++ b/watchman/UserDir.cpp
+@@ -18,6 +18,6 @@
+ #ifdef _WIN32
+-#include <Lmcons.h> // @manual
+-#include <Shlobj.h> // @manual
++#include <lmcons.h> // @manual
++#include <shlobj.h> // @manual
+ #else
+ #include <pwd.h>
+ #endif
+diff --git a/watchman/portability/WinError.cpp b/watchman/portability/WinError.cpp
+--- a/watchman/portability/WinError.cpp
++++ b/watchman/portability/WinError.cpp
+@@ -9,6 +9,7 @@
+
+ #ifdef _WIN32
+
++#include <cerrno>
+ #include <windows.h>
+
+ const char* win32_strerror(uint32_t err) {
+diff --git a/watchman/portability/Backtrace.h b/watchman/portability/Backtrace.h
+--- a/watchman/portability/Backtrace.h
++++ b/watchman/portability/Backtrace.h
+@@ -7,6 +7,8 @@
+
+ #pragma once
+
++#include <stddef.h>
++
+ #ifdef _WIN32
+
+ #define HAVE_BACKTRACE
+diff --git a/watchman/watchman_system.h b/watchman/watchman_system.h
+--- a/watchman/watchman_system.h
++++ b/watchman/watchman_system.h
+@@ -54,6 +54,9 @@ extern "C" {
+ typedef ptrdiff_t ssize_t;
+
+ #define snprintf _snprintf
++#ifndef _O_OBTAIN_DIR
++#define _O_OBTAIN_DIR 0x2000
++#endif
+ char* dirname(char* path);
+
+ #define STDIN_FILENO 0
 diff --git a/watchman/config/linux/config.h b/watchman/config/linux/config.h
 new file mode 100644
 --- /dev/null
@@ -87,6 +176,22 @@ new file mode 100644
 +#define HAVE_SYS_STATVFS_H 1
 +#define HAVE_SYS_TYPES_H 1
 +#define HAVE_SYS_UCRED_H 1
+diff --git a/watchman/config/windows/config.h b/watchman/config/windows/config.h
+new file mode 100644
+--- /dev/null
++++ b/watchman/config/windows/config.h
+@@ -0,0 +1,11 @@
++#pragma once
++
++#define WATCHMAN_CONFIG_FILE "C:/ProgramData/facebook/watchman.json"
++#define PACKAGE_VERSION "2026.07.06.00"
++
++#define HAVE_LOCALECONV 1
++#define HAVE_STRTOLL 1
++
++#define HAVE_INTTYPES_H 1
++#define HAVE_LOCALE_H 1
++#define HAVE_SYS_TYPES_H 1
 diff --git a/watchman/telemetry/WatchmanStats.cpp b/watchman/telemetry/WatchmanStats.cpp
 --- a/watchman/telemetry/WatchmanStats.cpp
 +++ b/watchman/telemetry/WatchmanStats.cpp

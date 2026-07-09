@@ -3,6 +3,7 @@ load(
     "linux_aarch64_dist",
     "linux_x86_64_dist",
     "macos_aarch64_dist",
+    "windows_x86_64_dist",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -22,11 +23,17 @@ macos_aarch64_dist(
     srcs = ["@watchman"],
 )
 
+windows_x86_64_dist(
+    name = "watchman-x86_64-windows-gnu",
+    srcs = ["@watchman"],
+)
+
 filegroup(
     name = "dist",
     srcs = [
         ":watchman-aarch64-apple-darwin",
         ":watchman-aarch64-linux-gnu",
         ":watchman-x86_64-linux-gnu",
+        ":watchman-x86_64-windows-gnu",
     ],
 )

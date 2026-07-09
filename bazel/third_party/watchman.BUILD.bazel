@@ -141,16 +141,23 @@ config_setting(
     constraint_values = ["@platforms//os:macos"],
 )
 
+config_setting(
+    name = "windows",
+    constraint_values = ["@platforms//os:windows"],
+)
+
 cc_library(
     name = "config_h",
     hdrs = select({
         ":linux": ["watchman/config/linux/config.h"],
         ":macos": ["watchman/config/macos/config.h"],
+        ":windows": ["watchman/config/windows/config.h"],
     }),
     include_prefix = "watchman",
     strip_include_prefix = select({
         ":linux": "watchman/config/linux",
         ":macos": "watchman/config/macos",
+        ":windows": "watchman/config/windows",
     }),
 )
 
@@ -167,6 +174,13 @@ cc_binary(
         "-I.",
     ] + select({
         ":linux": ["-pthread"],
+        ":windows": [
+            "-D_CRT_SECURE_NO_WARNINGS",
+            "-DNOMINMAX",
+            "-DSTRICT",
+            "-DWATCHMAN_DISABLE_DEELEVATE",
+            "-DWIN32_LEAN_AND_MEAN",
+        ],
         "//conditions:default": [],
     }),
     includes = ["."],
@@ -175,6 +189,18 @@ cc_binary(
         ":macos": [
             "-framework",
             "CoreServices",
+        ],
+        ":windows": [
+            "-ladvapi32",
+            "-ldbghelp",
+            "-lole32",
+            "-lpthread",
+            "-lrpcrt4",
+            "-lshell32",
+            "-lshlwapi",
+            "-luserenv",
+            "-luuid",
+            "-lws2_32",
         ],
     }),
     linkstatic = True,
@@ -198,7 +224,6 @@ cc_binary(
         "@folly//folly:singleton",
         "@folly//folly:stop_watch",
         "@folly//folly:string",
-        "@folly//folly:subprocess",
         "@folly//folly:synchronized",
         "@folly//folly:thread_local",
         "@folly//folly:unit",
