@@ -13,51 +13,95 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: ${{ matrix.config }}
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - config: linux-x64
-            execution_platform: //bazel/platforms:linux_x64
-            runner: ubuntu-24.04
-            shell_executable: /bin/bash
-          - config: linux-arm64
-            execution_platform: //bazel/platforms:linux_arm64
-            runner: ubuntu-24.04-arm
-            shell_executable: /bin/bash
-          - config: darwin-arm64
-            execution_platform: "@llvm//platforms:macos_arm64"
-            runner: macos-15
-            shell_executable: /opt/homebrew/bin/bash
-
+  build:
+    name: Build binaries
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v6
 
       - name: Free disk space
-        if: runner.os == 'Linux'
         run: sudo rm -rf /usr/local/lib/android
-
-      - name: Install modern Bash
-        if: runner.os == 'macOS'
-        run: brew install bash
 
       - uses: bazel-contrib/setup-bazel@0.19.0
         with:
           bazelisk-cache: true
           cache-save: ${{ github.event_name != 'pull_request' }}
-          disk-cache: ${{ github.workflow }}-${{ matrix.config }}
+          disk-cache: ${{ github.workflow }}-linux-x64
           repository-cache: true
 
-      - name: Build and smoke test
-        run: >-
-          bazel test
-          --shell_executable=${{ matrix.shell_executable }}
-          --config=${{ matrix.config }}
-          --extra_execution_platforms=${{ matrix.execution_platform }}
-          --build_tests_only
-          --test_output=errors
-          //...
+      - name: Build distributions
+        run: |
+          set -euo pipefail
+
+          targets=(
+            //:watchman-x86_64-linux-gnu
+            //:watchman-aarch64-linux-gnu
+            //:watchman-aarch64-apple-darwin
+          )
+          bazel build "${targets[@]}"
+
+          execroot="$(bazel info execution_root)"
+          stage() {
+            local triple="$1"
+            local target="$2"
+            local outputs=()
+
+            mapfile -t outputs < <(bazel cquery --output=files "$target")
+            [[ "${#outputs[@]}" -eq 1 ]]
+            install -Dm755 \
+              "$execroot/${outputs[0]}" \
+              "artifacts/$triple/watchman"
+          }
+
+          stage x86_64-linux-gnu //:watchman-x86_64-linux-gnu
+          stage aarch64-linux-gnu //:watchman-aarch64-linux-gnu
+          stage aarch64-apple-darwin //:watchman-aarch64-apple-darwin
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: watchman-x86_64-linux-gnu
+          path: artifacts/x86_64-linux-gnu/watchman
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: watchman-aarch64-linux-gnu
+          path: artifacts/aarch64-linux-gnu/watchman
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: watchman-aarch64-apple-darwin
+          path: artifacts/aarch64-apple-darwin/watchman
+          if-no-files-found: error
+
+  smoke:
+    name: Smoke test (${{ matrix.triple }})
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - triple: x86_64-linux-gnu
+            runner: ubuntu-24.04
+          - triple: aarch64-linux-gnu
+            runner: ubuntu-24.04-arm
+          - triple: aarch64-apple-darwin
+            runner: macos-15
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: watchman-${{ matrix.triple }}
+          path: artifacts
+
+      - name: Run smoke test
+        run: |
+          binary="$PWD/artifacts/watchman"
+          chmod +x "$binary"
+          tests/watchman_smoke_test.sh "$binary"
