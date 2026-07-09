@@ -1,4 +1,7 @@
-module(name = "rules_watchman")
+module(
+    name = "rules_watchman",
+    version = "0.0.0",
+)
 
 bazel_dep(name = "llvm", version = "0.8.11")
 bazel_dep(name = "boost.filesystem", version = "1.89.0.bcr.1")
