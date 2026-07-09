@@ -18,7 +18,7 @@ new file mode 100644
 +#pragma once
 +
 +#define WATCHMAN_CONFIG_FILE "/etc/watchman.json"
-+#define WATCHMAN_STATE_DIR "/var/run/watchman"
++#define WATCHMAN_USE_XDG_STATE_HOME 1
 +#define PACKAGE_VERSION "2026.07.06.00"
 +
 +#define HAVE_ACCEPT4 1
@@ -57,7 +57,7 @@ new file mode 100644
 +#pragma once
 +
 +#define WATCHMAN_CONFIG_FILE "/etc/watchman.json"
-+#define WATCHMAN_STATE_DIR "/var/run/watchman"
++#define WATCHMAN_USE_XDG_STATE_HOME 1
 +#define PACKAGE_VERSION "2026.07.06.00"
 +
 +#define HAVE_BACKTRACE 1

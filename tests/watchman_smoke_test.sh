@@ -44,6 +44,14 @@ trap cleanup EXIT INT TERM
 
 "$watchman" --version >/dev/null
 
+xdg_state_home="$tmp_dir/xdg-state"
+default_sock="$(
+  XDG_STATE_HOME="$xdg_state_home" "$watchman" get-sockname |
+    grep -F "$xdg_state_home/watchman/$(id -un)-state/sock"
+)"
+[[ -n "$default_sock" ]]
+XDG_STATE_HOME="$xdg_state_home" "$watchman" shutdown-server >/dev/null
+
 "$watchman" \
   --foreground \
   "--unix-listener-path=$socket" \
