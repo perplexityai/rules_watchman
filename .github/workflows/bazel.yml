@@ -22,12 +22,15 @@ jobs:
       matrix:
         include:
           - config: linux-x64
+            execution_platform: //bazel/platforms:linux_x64
             runner: ubuntu-24.04
             shell_executable: /bin/bash
           - config: linux-arm64
+            execution_platform: //bazel/platforms:linux_arm64
             runner: ubuntu-24.04-arm
             shell_executable: /bin/bash
           - config: darwin-arm64
+            execution_platform: "@llvm//platforms:macos_arm64"
             runner: macos-15
             shell_executable: /opt/homebrew/bin/bash
 
@@ -54,6 +57,7 @@ jobs:
           bazel test
           --shell_executable=${{ matrix.shell_executable }}
           --config=${{ matrix.config }}
+          --extra_execution_platforms=${{ matrix.execution_platform }}
           --build_tests_only
           --test_output=errors
           //...
