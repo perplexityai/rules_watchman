@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1 (2026-07-09)
+
+## What's Changed
+* fix: attach binaries to releases by @longlho in https://github.com/perplexityai/rules_watchman/pull/6
+
+
+**Full Changelog**: https://github.com/perplexityai/rules_watchman/compare/v0.1.0...v0.1.1
+
 ## 0.1.0 (2026-07-09)
 
 ## What's Changed
