@@ -16,3 +16,9 @@ linux_aarch64_dist, _linux_aarch64_dist_internal = _linux_aarch64_builder.build(
 _macos_aarch64_builder = _dist_builder.clone()
 _macos_aarch64_builder.set("platforms", [Label("@llvm//platforms:macos_arm64")])
 macos_aarch64_dist, _macos_aarch64_dist_internal = _macos_aarch64_builder.build()
+
+_windows_x86_64_builder = _dist_builder.clone()
+_windows_x86_64_builder.set("platforms", [Label("@llvm//platforms:windows_x86_64")])
+_windows_x86_64_builder.set(Label("@boost.context//:win-compile"), "win-mingw")
+_windows_x86_64_builder.set(Label("@openssl//:use-no-asm-fallback"), True)
+windows_x86_64_dist, _windows_x86_64_dist_internal = _windows_x86_64_builder.build()

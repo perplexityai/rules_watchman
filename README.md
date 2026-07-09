@@ -8,9 +8,12 @@ Supported targets:
 - Linux x64 (`x86_64-linux-gnu`)
 - Linux arm64 (`aarch64-linux-gnu`)
 - Darwin arm64 (`aarch64-apple-darwin`)
+- Windows x64 (`x86_64-windows-gnu`)
 
 Linux binaries statically link libc++ and third-party dependencies; glibc remains
-dynamic. Darwin uses the Apple system runtime and frameworks.
+dynamic. Darwin uses the Apple system runtime and frameworks. Windows uses
+Clang, MinGW-w64, UCRT, and libc++; it does not use the MSVC ABI. The optional
+`should_deelevate_on_startup` hook is disabled in the Windows Bazel build.
 
 Build any supported target from a registered host:
 
@@ -18,6 +21,7 @@ Build any supported target from a registered host:
 bazel build //:watchman-x86_64-linux-gnu
 bazel build //:watchman-aarch64-linux-gnu
 bazel build //:watchman-aarch64-apple-darwin
+bazel build //:watchman-x86_64-windows-gnu
 ```
 
 Build every distribution binary from one host:
@@ -30,4 +34,8 @@ Run the filesystem smoke test with a binary on its matching host:
 
 ```sh
 tests/watchman_smoke_test.sh /path/to/watchman
+```
+
+```powershell
+tests/watchman_smoke_test.ps1 -Watchman C:\path\to\watchman.exe
 ```

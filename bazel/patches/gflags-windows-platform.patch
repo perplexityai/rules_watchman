@@ -1,0 +1,30 @@
+diff --git a/bazel/gflags.bzl b/bazel/gflags.bzl
+--- a/bazel/gflags.bzl
++++ b/bazel/gflags.bzl
+@@ -51,7 +51,7 @@ def gflags_sources(namespace=["google", "gflags"]):
+         "src/mutex.h",
+         "src/util.h",
+     ] + select({
+-        "//:x64_windows": [
++        "@bazel_tools//src/conditions:windows": [
+             "src/windows_port.cc",
+             "src/windows_port.h",
+         ],
+@@ -76,7 +76,7 @@ def gflags_library(hdrs=[], srcs=[], threads=1):
+         "-DHAVE_STRTOQ",
+         "-DHAVE_RWLOCK",
+     ] + select({
+-        "//:x64_windows": [
++        "@bazel_tools//src/conditions:windows": [
+             "-DOS_WINDOWS",
+         ],
+         "//conditions:default": [
+@@ -88,7 +88,7 @@ def gflags_library(hdrs=[], srcs=[], threads=1):
+     linkopts = []
+     if threads:
+         linkopts += select({
+-            "//:x64_windows": [],
++            "@bazel_tools//src/conditions:windows": [],
+             "//conditions:default": ["-lpthread"],
+         })
+     else:

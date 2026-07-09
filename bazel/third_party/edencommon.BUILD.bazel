@@ -24,12 +24,28 @@ cc_library(
         "eden/common/utils/SysctlUtil.cpp",
         "eden/common/utils/UserInfo.cpp",
         "eden/common/utils/Utf8.cpp",
-    ],
+    ] + select({
+        "@platforms//os:windows": [
+            "eden/common/utils/FileUtils.cpp",
+            "eden/common/utils/windows/PlatformWindowsUnixSock.cpp",
+            "eden/common/utils/windows/WinError.cpp",
+            "eden/common/utils/windows/WinUtil.cpp",
+        ],
+        "//conditions:default": [],
+    }),
     hdrs = glob(
         ["eden/common/utils/**/*.h"],
         exclude = ["eden/common/utils/test/**"],
     ),
     includes = ["."],
+    linkopts = select({
+        "@platforms//os:windows": [
+            "-ldbghelp",
+            "-lrpcrt4",
+            "-luserenv",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
         "@boost.filesystem//:boost.filesystem",
         "@boost.regex//:boost.regex",

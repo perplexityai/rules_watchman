@@ -4,6 +4,7 @@ module(
 )
 
 bazel_dep(name = "llvm", version = "0.8.11")
+bazel_dep(name = "boost.context", version = "1.89.0.bcr.1")
 bazel_dep(name = "boost.filesystem", version = "1.89.0.bcr.1")
 bazel_dep(name = "boost.regex", version = "1.89.0.bcr.1")
 bazel_dep(name = "boost.utility", version = "1.89.0.bcr.1")
@@ -33,6 +34,8 @@ http_archive(
 http_archive(
     name = "edencommon",
     build_file = "//bazel/third_party:edencommon.BUILD.bazel",
+    patch_args = ["-p1"],
+    patches = ["//bazel/patches:edencommon-mingw.patch"],
     sha256 = "e94ce3819f4e015d732b2cb6a67e44b5f3ffc7de5518265dceb9b73bbcf5a16a",
     strip_prefix = "edencommon-9bbfab31b921d0044ef1eaed36e2b660d75f7bc4",
     urls = ["https://github.com/facebookexperimental/edencommon/archive/9bbfab31b921d0044ef1eaed36e2b660d75f7bc4.tar.gz"],
@@ -69,14 +72,34 @@ single_version_override(
     patch_strip = 1,
     patches = [
         "//bazel/patches:folly-libcxx.patch",
+        "//bazel/patches:folly-mingw.patch",
+        "//bazel/patches:folly-mingw-headers.patch",
         "//bazel/patches:folly-no-libunwind-on-linux-arm64.patch",
     ],
+)
+
+single_version_override(
+    module_name = "gflags",
+    patch_strip = 1,
+    patches = ["//bazel/patches:gflags-windows-platform.patch"],
+)
+
+single_version_override(
+    module_name = "glog",
+    patch_strip = 1,
+    patches = ["//bazel/patches:glog-mingw.patch"],
 )
 
 single_version_override(
     module_name = "libdwarf",
     patch_strip = 1,
     patches = ["//bazel/patches:libdwarf-bazel-9.patch"],
+)
+
+single_version_override(
+    module_name = "libevent",
+    patch_strip = 1,
+    patches = ["//bazel/patches:libevent-mingw.patch"],
 )
 
 single_version_override(
@@ -115,6 +138,10 @@ toolchain.target(
 toolchain.target(
     arch = "aarch64",
     os = "linux",
+)
+toolchain.target(
+    arch = "x86_64",
+    os = "windows",
 )
 use_repo(toolchain, "llvm_toolchains")
 

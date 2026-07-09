@@ -1,0 +1,64 @@
+diff --git a/include/event2/event-config.h b/include/event2/event-config.h
+--- a/include/event2/event-config.h
++++ b/include/event2/event-config.h
+@@ -7,7 +7,7 @@
+ #include "event2-config_linux.h"
+ #elif defined(__APPLE__)
+ #include "event2-config_apple.h"
+-#elif defined(_MSC_VER)
++#elif defined(_WIN32)
+ #include "event2-config_msvc.h"
+ #endif
+
+diff --git a/evconfig-private.h b/evconfig-private.h
+--- a/evconfig-private.h
++++ b/evconfig-private.h
+@@ -5,7 +5,7 @@
+ #include "evconfig-private_linux.h"
+ #elif defined(__APPLE__)
+ #include "evconfig-private_apple.h"
+-#elif defined(_MSC_VER)
++#elif defined(_WIN32)
+ // No file needed for MSVC.
+ #endif
+
+diff --git a/evutil.c b/evutil.c
+--- a/evutil.c
++++ b/evutil.c
+@@ -39,7 +39,7 @@
+ #include <process.h>
+ #undef _WIN32_WINNT
+ /* For structs needed by GetAdaptersAddresses */
+-#define _WIN32_WINNT 0x0501
++#define _WIN32_WINNT 0x0600
+ #include <iphlpapi.h>
+ #include <netioapi.h>
+ #endif
+
+diff --git a/BUILD.bazel b/BUILD.bazel
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -142,10 +142,10 @@ cc_library(
+     includes = ["include"],
+     linkopts = select({
+         "@platforms//os:windows": [
+-            "advapi32.lib",
+-            "crypt32.lib",
+-            "iphlpapi.lib",
+-            "ws2_32.lib",
++            "-ladvapi32",
++            "-lcrypt32",
++            "-liphlpapi",
++            "-lws2_32",
+         ],
+         "//conditions:default": [],
+     }),
+@@ -200,7 +200,7 @@ cc_library(
+     includes = ["include"],
+     linkopts = select({
+         "@platforms//os:windows": [
+-            "shell32.lib",
++            "-lshell32",
+         ],
+         "//conditions:default": [],
+     }),
