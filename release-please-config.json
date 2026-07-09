@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "bazel",
+  "include-component-in-tag": false,
+  "changelog-type": "github",
+  "bootstrap-sha": "7bf441cdfcb94d1de557b61e21eaa647bf28c68f",
+  "initial-version": "0.1.0",
+  "packages": {
+    ".": {
+      "package-name": "rules_watchman"
+    }
+  }
+}
