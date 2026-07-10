@@ -53,4 +53,6 @@ Commit messages and pull request titles use Conventional Commits, for example
 
 ## License
 
+Copyright 2026 Perplexity AI.
+
 Licensed under the [Apache License 2.0](LICENSE).
