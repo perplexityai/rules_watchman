@@ -50,3 +50,7 @@ npm ci
 
 Commit messages and pull request titles use Conventional Commits, for example
 `feat: add a target` or `fix: correct state directory resolution`.
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
