@@ -127,6 +127,10 @@ toolchain.exec(
     arch = "aarch64",
     os = "linux",
 )
+toolchain.exec(
+    arch = "x86_64",
+    os = "windows",
+)
 toolchain.target(
     arch = "aarch64",
     os = "macos",
