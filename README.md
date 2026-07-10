@@ -50,3 +50,9 @@ npm ci
 
 Commit messages and pull request titles use Conventional Commits, for example
 `feat: add a target` or `fix: correct state directory resolution`.
+
+## License
+
+Copyright 2026 Perplexity AI.
+
+Licensed under the [Apache License 2.0](LICENSE).
